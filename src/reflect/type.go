@@ -40,10 +40,12 @@ type Type interface {
 
 	// Align returns the alignment in bytes of a value of
 	// this type when allocated in memory.
+	// 此类型的变量对齐后所占用的字节
 	Align() int
 
 	// FieldAlign returns the alignment in bytes of a value of
 	// this type when used as a field in a struct.
+	// 如果是 struct 的字段，对齐后占用的字节数
 	FieldAlign() int
 
 	// Method returns the i'th method in the type's method set.
@@ -57,6 +59,7 @@ type Type interface {
 	// method signature, without a receiver, and the Func field is nil.
 	//
 	// Methods are sorted in lexicographic order.
+	// 返回类型方法集里的第 `i` (传入的参数)个方法
 	Method(int) Method
 
 	// MethodByName returns the method with that name in the type's
@@ -67,6 +70,7 @@ type Type interface {
 	//
 	// For an interface type, the returned Method's Type field gives the
 	// method signature, without a receiver, and the Func field is nil.
+	// 通过名称获取方法
 	MethodByName(string) (Method, bool)
 
 	// NumMethod returns the number of methods accessible using Method.
@@ -74,10 +78,12 @@ type Type interface {
 	// For a non-interface type, it returns the number of exported methods.
 	//
 	// For an interface type, it returns the number of exported and unexported methods.
+	// 获取类型方法集里导出的方法个数
 	NumMethod() int
 
 	// Name returns the type's name within its package for a defined type.
 	// For other (non-defined) types it returns the empty string.
+	// 类型名称
 	Name() string
 
 	// PkgPath returns a defined type's package path, that is, the import path
@@ -85,10 +91,12 @@ type Type interface {
 	// If the type was predeclared (string, error) or not defined (*T, struct{},
 	// []int, or A where A is an alias for a non-defined type), the package path
 	// will be the empty string.
+	// 返回类型所在的路径，如：encoding/base64
 	PkgPath() string
 
 	// Size returns the number of bytes needed to store
 	// a value of the given type; it is analogous to unsafe.Sizeof.
+	// 返回类型的大小，和 unsafe.Sizeof 功能类似
 	Size() uintptr
 
 	// String returns a string representation of the type.
@@ -96,27 +104,33 @@ type Type interface {
 	// (e.g., base64 instead of "encoding/base64") and is not
 	// guaranteed to be unique among types. To test for type identity,
 	// compare the Types directly.
+	// 返回类型的字符串表示形式
 	String() string
 
 	// Kind returns the specific kind of this type.
+	// 返回类型的类型值
 	Kind() Kind
 
 	// Implements reports whether the type implements the interface type u.
+	// 类型是否实现了接口 u
 	Implements(u Type) bool
 
 	// AssignableTo reports whether a value of the type is assignable to type u.
+	// 是否可以赋值给 u
 	AssignableTo(u Type) bool
 
 	// ConvertibleTo reports whether a value of the type is convertible to type u.
 	// Even if ConvertibleTo returns true, the conversion may still panic.
 	// For example, a slice of type []T is convertible to *[N]T,
 	// but the conversion will panic if its length is less than N.
+	// 是否可以类型转换成 u
 	ConvertibleTo(u Type) bool
 
 	// Comparable reports whether values of this type are comparable.
 	// Even if Comparable returns true, the comparison may still panic.
 	// For example, values of interface type are comparable,
 	// but the comparison will panic if their dynamic type is not comparable.
+	// 类型是否可以比较
 	Comparable() bool
 
 	// Methods applicable only to some types, depending on Kind.
@@ -134,10 +148,12 @@ type Type interface {
 	// Bits returns the size of the type in bits.
 	// It panics if the type's Kind is not one of the
 	// sized or unsized Int, Uint, Float, or Complex kinds.
+	// 类型所占据的位数
 	Bits() int
 
 	// ChanDir returns a channel type's direction.
 	// It panics if the type's Kind is not Chan.
+	// 返回通道的方向，只能是 chan 类型调用
 	ChanDir() ChanDir
 
 	// IsVariadic reports whether a function type's final input parameter
@@ -152,25 +168,33 @@ type Type interface {
 	//	t.IsVariadic() == true
 	//
 	// IsVariadic panics if the type's Kind is not Func.
+	// 返回类型是否是可变参数，只能是 func 类型调用
+	// 比如 t 是类型 func(x int, y ... float64)
+	// 那么 t.IsVariadic() == true
 	IsVariadic() bool
 
 	// Elem returns a type's element type.
 	// It panics if the type's Kind is not Array, Chan, Map, Pointer, or Slice.
+	// 返回内部子元素类型，只能由类型 Array, Chan, Map, Ptr, or Slice 调用
 	Elem() Type
 
 	// Field returns a struct type's i'th field.
 	// It panics if the type's Kind is not Struct.
 	// It panics if i is not in the range [0, NumField()).
+	//返回结构体类型的第 i 个字段，只能是结构体类型调用
+	// 如果 i 超过了总字段数，就会 panic
 	Field(i int) StructField
 
 	// FieldByIndex returns the nested field corresponding
 	// to the index sequence. It is equivalent to calling Field
 	// successively for each index i.
 	// It panics if the type's Kind is not Struct.
+	// 返回嵌套的结构体的字段
 	FieldByIndex(index []int) StructField
 
 	// FieldByName returns the struct field with the given name
 	// and a boolean indicating if the field was found.
+	// 通过字段名称获取字段
 	FieldByName(name string) (StructField, bool)
 
 	// FieldByNameFunc returns the struct field with a name
@@ -185,39 +209,48 @@ type Type interface {
 	// and FieldByNameFunc returns no match.
 	// This behavior mirrors Go's handling of name lookup in
 	// structs containing embedded fields.
+	// 返回名称符合 func 函数的字段
 	FieldByNameFunc(match func(string) bool) (StructField, bool)
 
 	// In returns the type of a function type's i'th input parameter.
 	// It panics if the type's Kind is not Func.
 	// It panics if i is not in the range [0, NumIn()).
+	// 获取函数类型的第 i 个参数的类型
 	In(i int) Type
 
 	// Key returns a map type's key type.
 	// It panics if the type's Kind is not Map.
+	// 返回 map 的 key 类型，只能由类型 map 调用
 	Key() Type
 
 	// Len returns an array type's length.
 	// It panics if the type's Kind is not Array.
+	// 返回 Array 的长度，只能由类型 Array 调用
 	Len() int
 
 	// NumField returns a struct type's field count.
 	// It panics if the type's Kind is not Struct.
+	// 返回类型字段的数量，只能由类型 Struct 调用
 	NumField() int
 
 	// NumIn returns a function type's input parameter count.
 	// It panics if the type's Kind is not Func.
+	// 返回函数类型的输入参数个数
 	NumIn() int
 
 	// NumOut returns a function type's output parameter count.
 	// It panics if the type's Kind is not Func.
+	// 返回函数类型的返回值个数
 	NumOut() int
 
 	// Out returns the type of a function type's i'th output parameter.
 	// It panics if the type's Kind is not Func.
 	// It panics if i is not in the range [0, NumOut()).
+	// 返回函数类型的第 i 个值的类型
 	Out(i int) Type
-
+	// 返回类型结构体的相同部分
 	common() *rtype
+	// 返回类型结构体的不同部分
 	uncommon() *uncommonType
 }
 

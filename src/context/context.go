@@ -69,6 +69,7 @@ type Context interface {
 	// Deadline returns the time when work done on behalf of this context
 	// should be canceled. Deadline returns ok==false when no deadline is
 	// set. Successive calls to Deadline return the same results.
+	// 返回 context 是否会被取消以及自动取消时间（即 deadline）
 	Deadline() (deadline time.Time, ok bool)
 
 	// Done returns a channel that's closed when work done on behalf of this
@@ -102,13 +103,15 @@ type Context interface {
 	//
 	// See https://blog.golang.org/pipelines for more examples of how to use
 	// a Done channel for cancellation.
+	// 当 context 被取消或者到了 deadline,返回一个被关闭的 channel
 	Done() <-chan struct{}
 
-	// If Done is not yet closed, Err returns nil.
+	//Err If Done is not yet closed, Err returns nil.
 	// If Done is closed, Err returns a non-nil error explaining why:
 	// Canceled if the context was canceled
 	// or DeadlineExceeded if the context's deadline passed.
 	// After Err returns a non-nil error, successive calls to Err return the same error.
+	// 在 channel Done 关闭后，返回 context 取消原因
 	Err() error
 
 	// Value returns the value associated with this context for key, or nil
@@ -156,6 +159,7 @@ type Context interface {
 	// 		u, ok := ctx.Value(userKey).(*User)
 	// 		return u, ok
 	// 	}
+	// 获取 key 对应的 value
 	Value(key any) any
 }
 

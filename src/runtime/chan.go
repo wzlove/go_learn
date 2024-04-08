@@ -403,11 +403,13 @@ func recvDirect(t *_type, sg *sudog, dst unsafe.Pointer) {
 }
 
 func closechan(c *hchan) {
+	// 关闭一个 nil channel,panic
 	if c == nil {
 		panic(plainError("close of nil channel"))
 	}
-
+	// 上锁
 	lock(&c.lock)
+	// 如果channel已经关闭
 	if c.closed != 0 {
 		unlock(&c.lock)
 		panic(plainError("close of closed channel"))
@@ -418,17 +420,22 @@ func closechan(c *hchan) {
 		racewritepc(c.raceaddr(), callerpc, abi.FuncPCABIInternal(closechan))
 		racerelease(c.raceaddr())
 	}
-
+	// 修改关闭状态
 	c.closed = 1
 
 	var glist gList
 
 	// release all readers
+	// 将 channel 所有等待接收队列的里 sudog 释放
 	for {
+		// 从接收队列里出队一个 sudog
 		sg := c.recvq.dequeue()
+		// 出队完毕，跳出循环
 		if sg == nil {
 			break
 		}
+		// 如果 elem 不为空，说明此 receiver 未忽略接收数据
+		// 给它赋一个相应类型的零值
 		if sg.elem != nil {
 			typedmemclr(c.elemtype, sg.elem)
 			sg.elem = nil
@@ -436,21 +443,27 @@ func closechan(c *hchan) {
 		if sg.releasetime != 0 {
 			sg.releasetime = cputicks()
 		}
+		// 取出 goroutine
 		gp := sg.g
 		gp.param = unsafe.Pointer(sg)
 		sg.success = false
 		if raceenabled {
 			raceacquireg(gp, c.raceaddr())
 		}
+		// 相连，形成链表
 		glist.push(gp)
 	}
 
 	// release all writers (they will panic)
+	// 将 channel 等待发送队列里的 sudog 释放
+	// 如果存在，这些 goroutine 将会 panic
 	for {
+		// 从发送队列里出队一个 sudog
 		sg := c.sendq.dequeue()
 		if sg == nil {
 			break
 		}
+		// 发送者会 panic
 		sg.elem = nil
 		if sg.releasetime != 0 {
 			sg.releasetime = cputicks()
@@ -461,11 +474,14 @@ func closechan(c *hchan) {
 		if raceenabled {
 			raceacquireg(gp, c.raceaddr())
 		}
+		// 形成链表
 		glist.push(gp)
 	}
+	// 解锁
 	unlock(&c.lock)
 
 	// Ready all Gs now that we've dropped the channel lock.
+	// 遍历链表
 	for !glist.empty() {
 		gp := glist.pop()
 		gp.schedlink = 0
