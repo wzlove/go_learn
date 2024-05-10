@@ -54,10 +54,10 @@ package runtime
 // before the table grows. Typical tables will be somewhat less loaded.
 
 import (
-	"internal/abi"
-	"internal/goarch"
-	"runtime/internal/atomic"
-	"runtime/internal/math"
+	"std/internal/abi"
+	"std/internal/goarch"
+	"std/runtime/internal/atomic"
+	"std/runtime/internal/math"
 	"unsafe"
 )
 
@@ -1083,6 +1083,7 @@ func hashGrow(t *maptype, h *hmap) {
 }
 
 // overLoadFactor reports whether count items placed in 1<<B buckets is over loadFactor.
+// 判断是否超过负载因子
 func overLoadFactor(count int, B uint8) bool {
 	return count > bucketCnt && uintptr(count) > loadFactorNum*(bucketShift(B)/loadFactorDen)
 }

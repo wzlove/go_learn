@@ -326,13 +326,17 @@ type gobuf struct {
 	// and restores it doesn't need write barriers. It's still
 	// typed as a pointer so that any other writes from Go get
 	// write barriers.
-	sp   uintptr
-	pc   uintptr
+	// 存储 rsp 寄存器的值
+	sp uintptr
+	// 存储 rip 寄存器的值
+	pc uintptr
+	// 指向 goroutine
 	g    guintptr
 	ctxt unsafe.Pointer
-	ret  uintptr
-	lr   uintptr
-	bp   uintptr // for framepointer-enabled architectures
+	// 保存系统调用的返回值
+	ret uintptr
+	lr  uintptr
+	bp  uintptr // for framepointer-enabled architectures
 }
 
 // sudog represents a g in a wait list, such as for sending/receiving
@@ -394,7 +398,9 @@ type libcall struct {
 // The bounds of the stack are exactly [lo, hi),
 // with no implicit data structures on either side.
 type stack struct {
+	// 栈顶，低地址
 	lo uintptr
+	// 栈低，高地址
 	hi uintptr
 }
 
@@ -412,13 +418,17 @@ type g struct {
 	// stackguard1 is the stack pointer compared in the C stack growth prologue.
 	// It is stack.lo+StackGuard on g0 and gsignal stacks.
 	// It is ~0 on other goroutine stacks, to trigger a call to morestackc (and crash).
-	stack       stack   // offset known to runtime/cgo
+	// goroutine 使用的栈
+	stack stack // offset known to runtime/cgo
+	// 用于栈的扩张和收缩检查，抢占标志
 	stackguard0 uintptr // offset known to liblink
 	stackguard1 uintptr // offset known to liblink
 
-	_panic    *_panic // innermost panic - offset known to liblink
-	_defer    *_defer // innermost defer
-	m         *m      // current m; offset known to arm liblink
+	_panic *_panic // innermost panic - offset known to liblink
+	_defer *_defer // innermost defer
+	// 当前与g绑定的m
+	m *m // current m; offset known to arm liblink
+	// goroutine的运行现场
 	sched     gobuf
 	syscallsp uintptr // if status==Gsyscall, syscallsp = sched.sp to use during gc
 	syscallpc uintptr // if status==Gsyscall, syscallpc = sched.pc to use during gc
@@ -434,14 +444,18 @@ type g struct {
 	//    stack may have moved in the meantime.
 	// 3. By debugCallWrap to pass parameters to a new goroutine because allocating a
 	//    closure in the runtime is forbidden.
+	// wakeup时传入的参数
 	param        unsafe.Pointer
 	atomicstatus atomic.Uint32
 	stackLock    uint32 // sigprof/scang lock; TODO: fold in to atomicstatus
 	goid         uint64
 	schedlink    guintptr
-	waitsince    int64      // approx time when the g become blocked
-	waitreason   waitReason // if status==Gwaiting
+	//g 被阻塞之后的近似时间
+	waitsince int64 // approx time when the g become blocked
+	// g 被阻塞的理由
+	waitreason waitReason // if status==Gwaiting
 
+	// 抢占调度标志。这个为 true 时，stackguard0 等于 stackpreempt
 	preempt       bool // preemption signal, duplicates stackguard0 = stackpreempt
 	preemptStop   bool // transition to _Gpreempted on preemption; otherwise, just deschedule
 	preemptShrink bool // shrink stack at synchronous safe point
@@ -464,30 +478,34 @@ type g struct {
 	// for stack shrinking.
 	parkingOnChan atomic.Bool
 
-	raceignore     int8     // ignore race detection events
-	sysblocktraced bool     // StartTrace has emitted EvGoInSyscall about this goroutine
-	tracking       bool     // whether we're tracking this G for sched latency statistics
-	trackingSeq    uint8    // used to decide whether to track this G
-	trackingStamp  int64    // timestamp of when the G last started being tracked
-	runnableTime   int64    // the amount of time spent runnable, cleared when running, only used when tracking
-	sysexitticks   int64    // cputicks when syscall has returned (for tracing)
-	traceseq       uint64   // trace event sequencer
-	tracelastp     puintptr // last P emitted an event for this goroutine
-	lockedm        muintptr
-	sig            uint32
-	writebuf       []byte
-	sigcode0       uintptr
-	sigcode1       uintptr
-	sigpc          uintptr
-	gopc           uintptr         // pc of go statement that created this goroutine
-	ancestors      *[]ancestorInfo // ancestor information goroutine(s) that created this goroutine (only used if debug.tracebackancestors)
-	startpc        uintptr         // pc of goroutine function
-	racectx        uintptr
-	waiting        *sudog         // sudog structures this g is waiting on (that have a valid elem ptr); in lock order
-	cgoCtxt        []uintptr      // cgo traceback context
-	labels         unsafe.Pointer // profiler labels
-	timer          *timer         // cached timer for time.Sleep
-	selectDone     atomic.Uint32  // are we participating in a select and did someone win the race?
+	raceignore     int8  // ignore race detection events
+	sysblocktraced bool  // StartTrace has emitted EvGoInSyscall about this goroutine
+	tracking       bool  // whether we're tracking this G for sched latency statistics
+	trackingSeq    uint8 // used to decide whether to track this G
+	trackingStamp  int64 // timestamp of when the G last started being tracked
+	runnableTime   int64 // the amount of time spent runnable, cleared when running, only used when tracking
+	// syscall 返回之后的 cputicks，用来做 tracing
+	sysexitticks int64    // cputicks when syscall has returned (for tracing)
+	traceseq     uint64   // trace event sequencer
+	tracelastp   puintptr // last P emitted an event for this goroutine
+	// 如果调用了 LockOsThread，那么这个 g 会绑定到某个 m 上
+	lockedm  muintptr
+	sig      uint32
+	writebuf []byte
+	sigcode0 uintptr
+	sigcode1 uintptr
+	sigpc    uintptr
+	// 创建该 goroutine 的语句的指令地址
+	gopc      uintptr         // pc of go statement that created this goroutine
+	ancestors *[]ancestorInfo // ancestor information goroutine(s) that created this goroutine (only used if debug.tracebackancestors)
+	// goroutine 函数的指令地址
+	startpc    uintptr // pc of goroutine function
+	racectx    uintptr
+	waiting    *sudog         // sudog structures this g is waiting on (that have a valid elem ptr); in lock order
+	cgoCtxt    []uintptr      // cgo traceback context
+	labels     unsafe.Pointer // profiler labels
+	timer      *timer         // cached timer for time.Sleep
+	selectDone atomic.Uint32  // are we participating in a select and did someone win the race?
 
 	// goroutineProfiled indicates the status of this goroutine's stack for the
 	// current in-progress goroutine profile
@@ -523,32 +541,41 @@ const (
 	freeMWait  = 2 // M still in use.
 )
 
+// m 代表工作线程，保存了自身使用的栈信息
 type m struct {
+	// 记录工作线程（也就是内核线程）使用的栈信息。在执行调度代码时需要使用
+	// 执行用户 goroutine 代码时，使用用户 goroutine 自己的栈，因此调度时会发生栈的切换
 	g0      *g     // goroutine with scheduling stack
 	morebuf gobuf  // gobuf arg to morestack
 	divmod  uint32 // div/mod denominator for arm - known to liblink
 	_       uint32 // align next field to 8 bytes
 
 	// Fields not known to debuggers.
-	procid        uint64            // for debuggers, but offset not hard-coded
-	gsignal       *g                // signal-handling g
-	goSigStack    gsignalStack      // Go-allocated signal handling stack
-	sigmask       sigset            // storage for saved signal mask
-	tls           [tlsSlots]uintptr // thread-local storage (for x86 extern register)
-	mstartfn      func()
-	curg          *g       // current running goroutine
-	caughtsig     guintptr // goroutine running during fatal signal
-	p             puintptr // attached p for executing go code (nil if not executing go code)
-	nextp         puintptr
-	oldp          puintptr // the p that was attached before executing a syscall
-	id            int64
-	mallocing     int32
-	throwing      throwType
-	preemptoff    string // if != "", keep curg running on this m
-	locks         int32
-	dying         int32
-	profilehz     int32
-	spinning      bool // m is out of work and is actively looking for work
+	procid     uint64       // for debuggers, but offset not hard-coded
+	gsignal    *g           // signal-handling g
+	goSigStack gsignalStack // Go-allocated signal handling stack
+	sigmask    sigset       // storage for saved signal mask
+	// 通过 tls 结构体实现 m 与工作线程的绑定
+	// 这里是线程本地存储
+	tls      [tlsSlots]uintptr // thread-local storage (for x86 extern register)
+	mstartfn func()
+	// 指向正在运行的 goroutine 对象
+	curg      *g       // current running goroutine
+	caughtsig guintptr // goroutine running during fatal signal
+	// 当前工作线程绑定的 p
+	p          puintptr // attached p for executing go code (nil if not executing go code)
+	nextp      puintptr
+	oldp       puintptr // the p that was attached before executing a syscall
+	id         int64
+	mallocing  int32
+	throwing   throwType
+	preemptoff string // if != "", keep curg running on this m
+	locks      int32
+	dying      int32
+	profilehz  int32
+	// 为 true 时表示当前 m 处于自旋状态，正在从其他线程偷工作
+	spinning bool // m is out of work and is actively looking for work
+	// m 正阻塞在 note 上
 	blocked       bool // m is blocked on a note
 	newSigstack   bool // minit on C thread called sigaltstack
 	printlock     int8
@@ -562,7 +589,10 @@ type m struct {
 	ncgo          int32         // number of cgo calls currently in progress
 	cgoCallersUse atomic.Uint32 // if non-zero, cgoCallers in use temporarily
 	cgoCallers    *cgoCallers   // cgo traceback if crashing in cgo call
-	park          note
+	// 没有 goroutine 需要运行时，工作线程睡眠在这个 park 成员上，
+	// 其它线程通过这个 park 唤醒该工作线程
+	park note
+	// 记录所有工作线程的链表
 	alllink       *m // on allm
 	schedlink     muintptr
 	lockedg       guintptr
